@@ -41,10 +41,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Leaflet Routing Machine CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -53,17 +49,11 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* Custom Leaflet Dark/Sleek Map Tweaks */
     #map {
       height: 380px;
       width: 100%;
       border-radius: 1rem;
       z-index: 10;
-    }
-
-    /* Hide Leaflet routing default panel overlay */
-    .leaflet-routing-container {
-      display: none !important;
     }
 
     .brand-gradient {
@@ -78,16 +68,6 @@
 
     .glow-button {
       box-shadow: 0 4px 20px rgba(211, 47, 47, 0.35);
-    }
-
-    /* Custom pulse animation for locate pin */
-    @keyframes pulse-ring {
-      0% { transform: scale(0.95); opacity: 0.8; }
-      50% { transform: scale(1.15); opacity: 0.4; }
-      100% { transform: scale(0.95); opacity: 0.8; }
-    }
-    .pulse-animation {
-      animation: pulse-ring 2s infinite ease-in-out;
     }
   </style>
 </head>
@@ -123,15 +103,15 @@
     <!-- Top Badge / Info Header -->
     <div class="p-4 rounded-2xl brand-gradient text-white shadow-xl relative overflow-hidden">
       <div class="absolute -right-4 -bottom-6 text-white/10 text-9xl font-black pointer-events-none select-none">
-        <i class="fa-solid fa-route"></i>
+        <i class="fa-solid fa-location-dot"></i>
       </div>
       <div class="relative z-10">
         <span class="inline-block bg-black/30 backdrop-blur-md text-[11px] font-semibold px-2.5 py-1 rounded-full mb-1.5">
           📍 Demerval Lobão e Região • Agilidade e Segurança
         </span>
-        <h2 class="text-lg sm:text-xl font-black tracking-tight">Solicite sua Corrida no Mapa</h2>
+        <h2 class="text-lg sm:text-xl font-black tracking-tight">Envie sua Localização Atual</h2>
         <p class="text-xs text-red-100 mt-1 max-w-lg">
-          Marque seu local de embarque e destino tocando no mapa ou ative seu GPS.
+          Toque no mapa para indicar onde você está ou ative o seu GPS abaixo.
         </p>
       </div>
     </div>
@@ -140,7 +120,7 @@
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div class="flex items-center gap-2">
           <span id="step-indicator" class="bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1">
-            <i class="fa-solid fa-location-crosshairs"></i> 1º Selecione o Embarque
+            <i class="fa-solid fa-location-crosshairs"></i> Selecione seu Local no Mapa
           </span>
         </div>
         
@@ -157,72 +137,41 @@
         
         <!-- Map Floating Helper Controls -->
         <div class="absolute bottom-3 right-3 z-[400] flex flex-col gap-2">
-          <button onclick="resetMarkers()" title="Limpar Seleção" 
+          <button onclick="resetMarker()" title="Limpar Seleção" 
             class="bg-neutral-900/90 hover:bg-red-900 text-white p-2.5 rounded-xl shadow-lg border border-neutral-700 text-xs font-bold transition">
             <i class="fa-solid fa-rotate-left"></i> Limpar
           </button>
         </div>
       </div>
 
-      <!-- Location Coordinates Display Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+      <!-- Location Coordinates Display Card -->
+      <div class="pt-1">
         <div class="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex items-start gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 font-bold">
             <i class="fa-solid fa-location-dot"></i>
           </div>
           <div class="overflow-hidden">
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Embarque (Origem)</span>
-            <p id="originAddressDisplay" class="text-xs text-white font-medium truncate italic text-gray-500">Toque no mapa ou use o GPS...</p>
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Sua Localização Atual</span>
+            <p id="locationAddressDisplay" class="text-xs font-medium truncate italic text-gray-500">Toque no mapa ou clique no botão GPS acima...</p>
           </div>
         </div>
-
-        <div class="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex items-start gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-red-500/20 text-brand-red flex items-center justify-center shrink-0 font-bold">
-            <i class="fa-solid fa-flag-checkered"></i>
-          </div>
-          <div class="overflow-hidden">
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Desembarque (Destino)</span>
-            <p id="destinationAddressDisplay" class="text-xs text-white font-medium truncate italic text-gray-500">Toque no mapa para definir...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="navigationBar" class="hidden glass-card rounded-2xl p-4 border border-neutral-800 space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-gray-300 flex items-center gap-1.5">
-          <i class="fa-solid fa-diamond-turn-right text-brand-red"></i>
-          Iniciar Navegação GPS Externa:
-        </span>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <a id="btnGoogleMaps" href="#" target="_blank" 
-          class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow">
-          <i class="fa-solid fa-map-location-dot text-sm"></i>
-          <span>Google Maps</span>
-        </a>
-        <a id="btnWaze" href="#" target="_blank" 
-          class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow">
-          <i class="fa-solid fa-location-arrow text-sm"></i>
-          <span>Waze Rota</span>
-        </a>
       </div>
     </div>
 
     <!-- Fare Summary Widget -->
     <div class="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
       <div class="flex items-center justify-between border-b border-neutral-800 pb-2">
-        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cálculo da Corrida</span>
+        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Valor da Corrida</span>
         <span class="text-[10px] bg-emerald-950/60 text-emerald-400 px-2 py-0.5 rounded font-semibold border border-emerald-900/40">Preço Fixo Promocional</span>
       </div>
       <div class="flex items-center justify-between pt-1">
         <div>
-          <span class="text-xs text-gray-400 block">Distância Estimada:</span>
-          <span id="distanceDisplay" class="text-sm font-bold text-white">0 km</span>
+          <span class="text-xs text-gray-400 block">Atendimento Rápido:</span>
+          <span class="text-sm font-bold text-white">Demerval Lobão e Região</span>
         </div>
         <div class="text-right">
           <span class="text-xs text-gray-400 block">Valor Fixo da Corrida:</span>
-          <span id="fareDisplay" class="text-2xl font-black text-brand-red">R$ 5,00</span>
+          <span class="text-2xl font-black text-brand-red">R$ 5,00</span>
         </div>
       </div>
     </div>
@@ -241,8 +190,8 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-gray-300 mb-1">Ponto de Referência / Detalhes</label>
-          <input type="text" id="referencePoint" placeholder="Ex: Ao lado do Posto Shell / Portão Azul" 
+          <label class="block text-xs font-bold text-gray-300 mb-1">Ponto de Referência / Destino Opcional</label>
+          <input type="text" id="referencePoint" placeholder="Ex: Ao lado do Posto Shell / Indo para o Centro" 
             class="w-full bg-neutral-900/90 border border-neutral-700 focus:border-brand-red rounded-xl py-2.5 px-3.5 text-sm text-white placeholder-gray-500 outline-none transition">
         </div>
       </div>
@@ -277,7 +226,7 @@
       <button type="submit" 
         class="w-full brand-gradient hover:opacity-95 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg transition duration-200 flex items-center justify-center gap-3 text-base tracking-wide glow-button">
         <i class="fa-brands fa-whatsapp text-2xl"></i>
-        <span>CHAMAR MOTOBOY NO WHATSAPP</span>
+        <span>ENVIAR LOCALIZAÇÃO NO WHATSAPP</span>
       </button>
     </form>
 
@@ -291,13 +240,10 @@
 
   <script>
     const MOTOBOY_PHONE = "5586995799484";
-    const FIXED_FARE = 5.00; // Fixed fare flat rate
+    const FIXED_FARE = 5.00;
 
-    // Initial Coordinates (Teresina Center Default)
-    let originCoords = null;
-    let destinationCoords = null;
-
-    let map, originMarker, destinationMarker, routingControl;
+    let currentCoords = null;
+    let map, locationMarker;
 
     // Initialize Leaflet Map on Load
     window.onload = function() {
@@ -305,7 +251,7 @@
     };
 
     function initMap() {
-      // Centered at Teresina, PI
+      // Centered at Teresina / Demerval Lobão Region
       const defaultCenter = [-5.0892, -42.8016];
       
       map = L.map('map', {
@@ -318,8 +264,8 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // Custom Icon Styles
-      window.originIcon = L.icon({
+      // Custom Location Icon
+      window.locationIcon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
         iconSize: [25, 41],
@@ -328,68 +274,36 @@
         shadowSize: [41, 41]
       });
 
-      window.destIcon = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-      });
-
-      // Map Click Handler for Origin & Destination selection
+      // Map Click Handler
       map.on('click', function(e) {
         const { lat, lng } = e.latlng;
-
-        if (!originCoords) {
-          setOrigin(lat, lng, "Local marcado no mapa");
-        } else if (!destinationCoords) {
-          setDestination(lat, lng, "Destino marcado no mapa");
-        } else {
-          // If both set, reset destination to new point
-          setDestination(lat, lng, "Novo destino marcado no mapa");
-        }
+        setLocation(lat, lng, "Local selecionado no mapa");
       });
     }
 
-    // Set Origin Location
-    function setOrigin(lat, lng, label) {
-      originCoords = { lat, lng };
+    // Set User Location
+    function setLocation(lat, lng, label) {
+      currentCoords = { lat, lng };
 
-      if (originMarker) map.removeLayer(originMarker);
+      if (locationMarker) map.removeLayer(locationMarker);
 
-      originMarker = L.marker([lat, lng], { icon: window.originIcon })
+      locationMarker = L.marker([lat, lng], { icon: window.locationIcon })
         .addTo(map)
-        .bindPopup("<b>📍 Embarque</b>").openPopup();
+        .bindPopup("<b>📍 Seu Local de Embarque</b>").openPopup();
 
-      document.getElementById('originAddressDisplay').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} (${label})`;
-      document.getElementById('step-indicator').className = "bg-brand-red text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1";
-      document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-flag-checkered"></i> 2º Selecione o Destino';
+      const displayElem = document.getElementById('locationAddressDisplay');
+      displayElem.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} (${label})`;
+      displayElem.classList.remove('text-gray-500', 'italic');
+      displayElem.classList.add('text-white');
 
-      updateRouteAndFare();
-    }
-
-    // Set Destination Location
-    function setDestination(lat, lng, label) {
-      destinationCoords = { lat, lng };
-
-      if (destinationMarker) map.removeLayer(destinationMarker);
-
-      destinationMarker = L.marker([lat, lng], { icon: window.destIcon })
-        .addTo(map)
-        .bindPopup("<b>🏁 Desembarque</b>").openPopup();
-
-      document.getElementById('destinationAddressDisplay').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} (${label})`;
       document.getElementById('step-indicator').className = "bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1";
-      document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-check-double"></i> Trajeto Definido!';
-
-      updateRouteAndFare();
+      document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-check"></i> Localização Pronta!';
     }
 
     // Request GPS Current Location
     function useCurrentLocation() {
       if (!navigator.geolocation) {
-        alert("Navegador não suporta geolocalização.");
+        alert("Seu navegador não suporta geolocalização.");
         return;
       }
 
@@ -398,87 +312,27 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           map.setView([lat, lng], 16);
-          setOrigin(lat, lng, "Sua Posição GPS Atual");
+          setLocation(lat, lng, "Sua Posição GPS Atual");
         },
         (error) => {
-          alert("Não foi possível obter sua localização. Por favor, selecione clicando no mapa.");
+          alert("Não foi possível obter sua localização automática. Por favor, clique no ponto exato no mapa.");
         },
         { enableHighAccuracy: true }
       );
     }
 
-    // Calculate Route & Fares
-    function updateRouteAndFare() {
-      if (!originCoords) return;
+    // Reset Marker
+    function resetMarker() {
+      currentCoords = null;
+      if (locationMarker) map.removeLayer(locationMarker);
 
-      if (originCoords && destinationCoords) {
-        // Draw Route using OSRM Leaflet Routing Machine
-        if (routingControl) map.removeControl(routingControl);
-
-        routingControl = L.Routing.control({
-          waypoints: [
-            L.latLng(originCoords.lat, originCoords.lng),
-            L.latLng(destinationCoords.lat, destinationCoords.lng)
-          ],
-          router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/viaroute' }),
-          show: false,
-          addWaypoints: false,
-          draggableWaypoints: false,
-          fitSelectedRoutes: true,
-          lineOptions: { styles: [{ color: '#D32F2F', opacity: 0.8, weight: 6 }] }
-        }).addTo(map);
-
-        routingControl.on('routesfound', function(e) {
-          const routes = e.routes;
-          const summary = routes[0].summary;
-          const distanceKm = (summary.totalDistance / 1000).toFixed(1);
-
-          calculateFare(distanceKm);
-          updateNavigationLinks();
-        });
-      } else {
-        calculateFare(0);
-      }
-    }
-
-    // Calculate Estimated Fare Price (Fixed to R$ 5,00)
-    function calculateFare(distanceKm) {
-      const dist = parseFloat(distanceKm) || 0;
-      const formattedFare = FIXED_FARE.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      document.getElementById('distanceDisplay').textContent = `${dist} km`;
-      document.getElementById('fareDisplay').textContent = formattedFare;
-    }
-
-    // Update GPS Navigation External Links (Google Maps & Waze)
-    function updateNavigationLinks() {
-      if (!originCoords || !destinationCoords) return;
-
-      const gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originCoords.lat},${originCoords.lng}&destination=${destinationCoords.lat},${destinationCoords.lng}&travelmode=two-wheeler`;
-      const wazeUrl = `https://waze.com/ul?ll=${destinationCoords.lat},${destinationCoords.lng}&navigate=yes`;
-
-      document.getElementById('btnGoogleMaps').href = gmapsUrl;
-      document.getElementById('btnWaze').href = wazeUrl;
-
-      document.getElementById('navigationBar').classList.remove('hidden');
-    }
-
-    // Reset Markers and State
-    function resetMarkers() {
-      originCoords = null;
-      destinationCoords = null;
-
-      if (originMarker) map.removeLayer(originMarker);
-      if (destinationMarker) map.removeLayer(destinationMarker);
-      if (routingControl) map.removeControl(routingControl);
-
-      document.getElementById('originAddressDisplay').textContent = "Toque no mapa ou use o GPS...";
-      document.getElementById('destinationAddressDisplay').textContent = "Toque no mapa para definir...";
-      document.getElementById('distanceDisplay').textContent = "0 km";
-      document.getElementById('fareDisplay').textContent = "R$ 5,00";
-      document.getElementById('navigationBar').classList.add('hidden');
+      const displayElem = document.getElementById('locationAddressDisplay');
+      displayElem.textContent = "Toque no mapa ou clique no botão GPS acima...";
+      displayElem.classList.add('text-gray-500', 'italic');
+      displayElem.classList.remove('text-white');
 
       document.getElementById('step-indicator').className = "bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1";
-      document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> 1º Selecione o Embarque';
+      document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Selecione seu Local no Mapa';
     }
 
     // Toggle Payment Change Input
@@ -497,13 +351,8 @@
     function handleSendRideRequest(e) {
       e.preventDefault();
 
-      if (!originCoords) {
-        alert("Por favor, selecione o ponto de embarque (origem) no mapa!");
-        return;
-      }
-
-      if (!destinationCoords) {
-        alert("Por favor, selecione o ponto de desembarque (destino) no mapa!");
+      if (!currentCoords) {
+        alert("Por favor, selecione a sua localização no mapa ou ative o GPS antes de enviar!");
         return;
       }
 
@@ -513,12 +362,8 @@
       const paymentMethod = document.getElementById('paymentMethod').value;
       const changeAmount = document.getElementById('changeAmount').value.trim();
 
-      const distanceText = document.getElementById('distanceDisplay').textContent;
-      const fareText = document.getElementById('fareDisplay').textContent;
-
-      const originMapsUrl = `https://maps.google.com/?q=${originCoords.lat},${originCoords.lng}`;
-      const destMapsUrl = `https://maps.google.com/?q=${destinationCoords.lat},${destinationCoords.lng}`;
-      const routeUrl = `https://www.google.com/maps/dir/?api=1&origin=${originCoords.lat},${originCoords.lng}&destination=${destinationCoords.lat},${destinationCoords.lng}`;
+      const formattedFare = FIXED_FARE.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const locationMapsUrl = `https://maps.google.com/?q=${currentCoords.lat},${currentCoords.lng}`;
 
       let changeText = "";
       if (paymentMethod === 'Dinheiro' && changeAmount) {
@@ -530,18 +375,11 @@
 ---------------------------------------
 👤 *Passageiro:* ${passengerName}
 🪖 *Capacete:* ${helmetOption}
-${referencePoint ? `💬 *Ref/Obs:* ${referencePoint}\n` : ""}
-📍 *Embarque (Origem):*
-${originMapsUrl}
+${referencePoint ? `💬 *Ref / Destino:* ${referencePoint}\n` : ""}
+📍 *Minha Localização Atual:*
+${locationMapsUrl}
 
-🏁 *Desembarque (Destino):*
-${destMapsUrl}
-
-🗺️ *Rota Completa no GPS:*
-${routeUrl}
-
-📏 *Distância Estimada:* ${distanceText}
-💰 *Valor Estimado:* ${fareText}
+💰 *Valor Fixo:* ${formattedFare}
 💳 *Pagamento:* ${paymentMethod}${changeText}
 ---------------------------------------
 _Olavo Santos - Serviços Gerais_`;
@@ -552,6 +390,5 @@ _Olavo Santos - Serviços Gerais_`;
       window.open(whatsappUrl, '_blank');
     }
   </script>
-  <script src="html.js"></script>
 </body>
 </html>
