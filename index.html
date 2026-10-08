@@ -245,26 +245,25 @@
     let currentCoords = null;
     let map, locationMarker;
 
-    // Initialize Leaflet Map on Load
     window.onload = function() {
       initMap();
     };
 
     function initMap() {
-      // Centered at Teresina / Demerval Lobão Region
+      // Coordenadas padrão (Demerval Lobão / Teresina)
       const defaultCenter = [-5.0892, -42.8016];
       
       map = L.map('map', {
-        zoomControl: true
+        zoomControl: true,
+        tap: true,
+        touchZoom: true
       }).setView(defaultCenter, 13);
 
-      // OpenStreetMap Tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // Custom Location Icon
       window.locationIcon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -274,14 +273,16 @@
         shadowSize: [41, 41]
       });
 
-      // Map Click Handler
+      // Permite toque direto no mapa
       map.on('click', function(e) {
         const { lat, lng } = e.latlng;
         setLocation(lat, lng, "Local selecionado no mapa");
       });
+
+      // Tenta obter a localização GPS automaticamente assim que o app abre
+      useCurrentLocation(true);
     }
 
-    // Set User Location
     function setLocation(lat, lng, label) {
       currentCoords = { lat, lng };
 
@@ -300,10 +301,9 @@
       document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-check"></i> Localização Pronta!';
     }
 
-    // Request GPS Current Location
-    function useCurrentLocation() {
+    function useCurrentLocation(isAutomatic = false) {
       if (!navigator.geolocation) {
-        alert("Seu navegador não suporta geolocalização.");
+        if (!isAutomatic) alert("Seu dispositivo/navegador não suporta geolocalização.");
         return;
       }
 
@@ -315,13 +315,14 @@
           setLocation(lat, lng, "Sua Posição GPS Atual");
         },
         (error) => {
-          alert("Não foi possível obter sua localização automática. Por favor, clique no ponto exato no mapa.");
+          if (!isAutomatic) {
+            alert("Não foi possível obter a sua localização por GPS. Certifique-se de que o GPS está ativo e concedeu permissão de localização. Você também pode tocar diretamente no mapa para selecionar o local.");
+          }
         },
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
 
-    // Reset Marker
     function resetMarker() {
       currentCoords = null;
       if (locationMarker) map.removeLayer(locationMarker);
@@ -335,7 +336,6 @@
       document.getElementById('step-indicator').innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Selecione seu Local no Mapa';
     }
 
-    // Toggle Payment Change Input
     function toggleChangeField() {
       const paymentMethod = document.getElementById('paymentMethod').value;
       const changeContainer = document.getElementById('changeContainer');
@@ -347,7 +347,6 @@
       }
     }
 
-    // Send Form Order to WhatsApp
     function handleSendRideRequest(e) {
       e.preventDefault();
 
